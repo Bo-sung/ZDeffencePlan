@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폐교 생존 게임 - 탐사 지역 선택</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(40, 40, 40, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 1200px;
+            height: 800px;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background: rgba(30, 30, 30, 0.9);
+            padding: 25px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-title {
+            color: #ffc107;
+            font-size: 1.4em;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            border-bottom: 2px solid #ffc107;
+            padding-bottom: 10px;
+        }
+
+        .selected-region-info {
+            background: linear-gradient(135deg, #3a3a3a, #2a2a2a);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            min-height: 120px;
+        }
+
+        .region-name {
+            color: #ffc107;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .danger-level {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .danger-low { background: #28a745; }
+        .danger-medium { background: #ffc107; color: #000; }
+        .danger-high { background: #dc3545; }
+        .danger-extreme { background: #6f42c1; }
+
+        .region-details {
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #ccc;
+        }
+
+        .exploration-objectives {
+            background: rgba(50, 50, 50, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            flex-grow: 1;
+        }
+
+        .objective-item {
+            background: rgba(60, 60, 60, 0.8);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .objective-item:hover {
+            background: rgba(80, 80, 80, 0.8);
+            border-left-color: #ffc107;
+        }
+
+        .objective-item.selected {
+            background: rgba(255, 193, 7, 0.2);
+            border-left-color: #ffc107;
+        }
+
+        .objective-title {
+            color: #ffc107;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .objective-desc {
+            color: #aaa;
+            font-size: 0.8em;
+        }
+
+        .team-status {
+            background: rgba(50, 50, 50, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .team-members {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .member-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #666;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .member-icon.leader { border-color: #ffc107; color: #ffc107; }
+        .member-icon.guard { border-color: #dc3545; color: #dc3545; }
+        .member-icon.scout { border-color: #28a745; color: #28a745; }
+        .member-icon.carrier { border-color: #6c757d; color: #6c757d; }
+
+        .dispatch-button {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .dispatch-button:hover {
+            background: linear-gradient(135deg, #218838, #1e7e34);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .dispatch-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .map-area {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .map-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .region-marker {
+            position: absolute;
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #666;
+            backdrop-filter: blur(10px);
+        }
+
+        .region-marker:hover {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            transform: scale(1.05);
+        }
+
+        .region-marker.selected {
+            background: rgba(255, 193, 7, 0.3);
+            border-color: #ffc107;
+            color: #ffc107;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+        }
+
+        .region-marker.explored {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+        }
+
+        .region-marker.locked {
+            border-color: #666;
+            background: rgba(100, 100, 100, 0.1);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* 지역별 위치 */
+        .region-janggi { top: 70%; left: 15%; }
+        .region-igok { top: 50%; left: 25%; }
+        .region-seongdang { top: 60%; left: 35%; }
+        .region-sangin { top: 25%; left: 45%; }
+        .region-wolseong { top: 15%; left: 35%; }
+        .region-duryu { top: 30%; left: 65%; }
+        .region-horim { top: 80%; left: 20%; }
+        .region-paho { top: 35%; left: 20%; }
+        .region-yongsan { top: 20%; left: 60%; }
+        .region-bonri { top: 10%; left: 75%; }
+        .region-gamsam { top: 40%; left: 80%; }
+        .region-jukjeon { top: 55%; left: 85%; }
+        .region-songheyon { top: 75%; left: 45%; }
+        .region-galsan { top: 90%; left: 55%; }
+        .region-research { top: 45%; left: 70%; }
+
+        .map-legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.8em;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        .fog-overlay {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            pointer-events: none;
+        }
+
+        .fog-overlay.fog1 { top: 10%; left: 10%; width: 200px; height: 150px; }
+        .fog-overlay.fog2 { top: 60%; left: 60%; width: 180px; height: 120px; }
+        .fog-overlay.fog3 { top: 80%; left: 75%; width: 150px; height: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-title">🗺️ 탐사 계획</div>
+            
+            <div class="selected-region-info" id="region-info">
+                <div class="region-name">지역을 선택하세요</div>
+                <div class="region-details">
+                    탐사할 지역을 클릭하여 상세 정보를 확인하고<br>
+                    탐사 목적을 설정한 후 팀을 파견하세요.
+                </div>
+            </div>
+
+            <div class="exploration-objectives">
+                <div class="sidebar-title" style="font-size: 1.1em; margin-bottom: 15px;">🎯 탐사 목적</div>
+                <div class="objective-item" data-objective="resource">
+                    <div class="objective-title">🔧 자원 탐색</div>
+                    <div class="objective-desc">건설과 생존에 필요한 각종 자원을 수집합니다</div>
+                </div>
+                <div class="objective-item" data-objective="survivor">
+                    <div class="objective-title">👥 생존자 탐색</div>
+                    <div class="objective-desc">새로운 동료를 찾아 공동체를 확장합니다</div>
+                </div>
+                <div class="objective-item" data-objective="intel">
+                    <div class="objective-title">⚠️ 위험 요소 정찰</div>
+                    <div class="objective-desc">다음 웨이브 공격에 대한 정보를 수집합니다</div>
+                </div>
+                <div class="objective-item" data-objective="trade">
+                    <div class="objective-title">🤝 거래 시도</div>
+                    <div class="objective-desc">다른 생존자 집단과 교역을 시도합니다</div>
+                </div>
+            </div>
+
+            <div class="team-status">
+                <div class="sidebar-title" style="font-size: 1.1em; margin-bottom: 10px;">👨‍👩‍👧‍👦 탐사팀 (5명)</div>
+                <div class="team-members">
+                    <div class="member-icon leader" title="리더 - 김민수 (정신 18)">리</div>
+                    <div class="member-icon guard" title="호위 - 박지영 (전투 15)">호</div>
+                    <div class="member-icon guard" title="호위 - 이동혁 (사격 16)">호</div>
+                    <div class="member-icon scout" title="정찰 - 최수진 (민첩 17)">정</div>
+                    <div class="member-icon carrier" title="운반 - 정태민 (체력 14)">운</div>
+                </div>
+            </div>
+
+            <button class="dispatch-button" id="dispatch-btn" disabled>
+                📍 탐사 지역과 목적을 선택하세요
+            </button>
+        </div>
+
+        <div class="map-area">
+            <div class="map-grid"></div>
+            
+            <!-- 안전 지역 (초기 개방) -->
+            <div class="region-marker explored region-janggi" data-region="janggi">장기동</div>
+            <div class="region-marker explored region-igok" data-region="igok">이곡동</div>
+            <div class="region-marker explored region-seongdang" data-region="seongdang">성당동</div>
+            
+            <!-- 탐사 가능 지역 -->
+            <div class="region-marker region-sangin" data-region="sangin">상인동</div>
+            <div class="region-marker region-wolseong" data-region="wolseong">월성동</div>
+            <div class="region-marker region-duryu" data-region="duryu">두류동</div>
+            <div class="region-marker region-paho" data-region="paho">파호동</div>
+            <div class="region-marker region-yongsan" data-region="yongsan">용산동</div>
+            
+            <!-- 잠금 지역 -->
+            <div class="region-marker locked region-horim" data-region="horim">호림동</div>
+            <div class="region-marker locked region-bonri" data-region="bonri">본리동</div>
+            <div class="region-marker locked region-gamsam" data-region="gamsam">감삼동</div>
+            <div class="region-marker locked region-jukjeon" data-region="jukjeon">죽전동</div>
+            <div class="region-marker locked region-research" data-region="research">연구소</div>
+
+            <!-- 전장 안개 -->
+            <div class="fog-overlay fog1"></div>
+            <div class="fog-overlay fog2"></div>
+            <div class="fog-overlay fog3"></div>
+
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(40, 167, 69, 0.5); border-color: #28a745;"></div>
+                    <span>탐사 완료</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(255, 193, 7, 0.3); border-color: #ffc107;"></div>
+                    <span>탐사 가능</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(100, 100, 100, 0.3); border-color: #666;"></div>
+                    <span>미개방</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const regionData = {
+            janggi: {
+                name: "장기동 주거지구",
+                danger: "low",
+                dangerText: "안전",
+                description: "이미 탐사를 완료한 안전한 주거지역입니다. 기본적인 생활용품과 식량을 지속적으로 수집할 수 있습니다.",
+                resources: "식량, 생활용품, 의복",
+                time: "2-4시간",
+                monsters: "없음 (정화 완료)"
+            },
+            igok: {
+                name: "이곡동 주거지구", 
+                danger: "low",
+                dangerText: "안전",
+                description: "정착 초기에 탐사한 지역으로 현재는 안전합니다. 소량의 자원을 지속적으로 획득할 수 있습니다.",
+                resources: "식량, 가구, 소형 전자기기",
+                time: "3-5시간",
+                monsters: "없음 (정화 완료)"
+            },
+            seongdang: {
+                name: "성당동 주거지구",
+                danger: "low", 
+                dangerText: "안전",
+                description: "초기 정착 지역 중 하나입니다. 생존자들이 남긴 보급품을 찾을 수 있습니다.",
+                resources: "의복, 의료용품, 종교 서적",
+                time: "2-3시간",
+                monsters: "없음 (정화 완료)"
+            },
+            sangin: {
+                name: "상인동 상점가",
+                danger: "medium",
+                dangerText: "보통",
+                description: "번화했던 상업지구입니다. 다양한 물품을 찾을 수 있지만 약탈자들이 출몰합니다.",
+                resources: "식량, 의료용품, 전자제품, 공구",
+                time: "4-8시간",
+                monsters: "약탈자 집단, 감염된 상인"
+            },
+            wolseong: {
+                name: "월성동 종합병원",
+                danger: "high",
+                dangerText: "위험",
+                description: "대형 의료시설입니다. 귀중한 의료용품이 있지만 감염된 환자들이 위험합니다.",
+                resources: "의료용품, 의약품, 의료장비",
+                time: "6-10시간", 
+                monsters: "감염된 환자, 실험실 돌연변이"
+            },
+            duryu: {
+                name: "두류동 대형마트",
+                danger: "medium",
+                dangerText: "보통",
+                description: "대량의 생활용품이 보관된 마트입니다. 집단 감염자들이 서식하고 있습니다.",
+                resources: "대량 식량, 생활용품, 의약품",
+                time: "6-10시간",
+                monsters: "마트 내 집단 감염자"
+            },
+            paho: {
+                name: "파호동 물류창고",
+                danger: "medium",
+                dangerText: "보통", 
+                description: "물류 유통의 중심지였습니다. 포장된 상품들과 운송장비를 찾을 수 있습니다.",
+                resources: "포장 식량, 연료, 운송장비",
+                time: "6-8시간",
+                monsters: "창고 점령 약탈자"
+            },
+            yongsan: {
+                name: "용산동 대학교",
+                danger: "medium",
+                dangerText: "보통",
+                description: "교육과 연구의 중심지입니다. 전문 지식과 연구장비를 확보할 수 있습니다.",
+                resources: "서적, 연구장비, 전자기기",
+                time: "8-12시간",
+                monsters: "감염된 학생/교수"
+            }
+        };
+
+        let selectedRegion = null;
+        let selectedObjective = null;
+
+        // 지역 마커 클릭 이벤트
+        document.querySelectorAll('.region-marker:not(.locked)').forEach(marker => {
+            marker.addEventListener('click', function() {
+                const regionId = this.dataset.region;
+                if (!regionId || this.classList.contains('locked')) return;
+
+                // 이전 선택 해제
+                document.querySelectorAll('.region-marker').forEach(m => m.classList.remove('selected'));
+                
+                // 새로운 선택
+                this.classList.add('selected');
+                selectedRegion = regionId;
+                
+                updateRegionInfo(regionId);
+                updateDispatchButton();
+            });
+        });
+
+        // 탐사 목적 선택 이벤트
+        document.querySelectorAll('.objective-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.objective-item').forEach(i => i.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedObjective = this.dataset.objective;
+                updateDispatchButton();
+            });
+        });
+
+        function updateRegionInfo(regionId) {
+            const region = regionData[regionId];
+            if (!region) return;
+
+            const dangerClass = `danger-${region.danger}`;
+            
+            document.getElementById('region-info').innerHTML = `
+                <div class="region-name">${region.name}</div>
+                <div class="danger-level ${dangerClass}">${region.dangerText}</div>
+                <div class="region-details">
+                    <strong>설명:</strong> ${region.description}<br><br>
+                    <strong>주요 자원:</strong> ${region.resources}<br>
+                    <strong>예상 시간:</strong> ${region.time}<br>
+                    <strong>위험 요소:</strong> ${region.monsters}
+                </div>
+            `;
+        }
+
+        function updateDispatchButton() {
+            const button = document.getElementById('dispatch-btn');
+            
+            if (selectedRegion && selectedObjective) {
+                button.disabled = false;
+                button.textContent = `🚀 ${regionData[selectedRegion].name} 탐사 시작`;
+                button.onclick = startExploration;
+            } else {
+                button.disabled = true;
+                button.textContent = '📍 탐사 지역과 목적을 선택하세요';
+            }
+        }
+
+        function startExploration() {
+            if (selectedRegion && selectedObjective) {
+                const region = regionData[selectedRegion];
+                const objectives = {
+                    resource: '자원 탐색',
+                    survivor: '생존자 탐색', 
+                    intel: '위험 요소 정찰',
+                    trade: '거래 시도'
+                };
+                
+                alert(`${region.name}에서 ${objectives[selectedObjective]} 임무를 시작합니다!\n\n예상 소요 시간: ${region.time}\n위험도: ${region.dangerText}`);
+            }
+        }
+
+        // 초기 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            // 잠금된 지역에 툴팁 추가
+            document.querySelectorAll('.region-marker.locked').forEach(marker => {
+                marker.title = '인접 지역을 먼저 탐사해야 합니다';
+            });
+        });
+    </script>
+</body>
+</html>
