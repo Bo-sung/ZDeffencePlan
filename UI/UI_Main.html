@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>폐교 생존 게임 UI 시각화 (FM Style)</title>
+    <style>
+        /* 기본 스타일 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #eee;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 전체 컨테이너 - 1920x1080 기준 */
+        .game-container {
+            width: 1920px;
+            height: 1080px;
+            display: flex;
+            flex-direction: column;
+            background-color: #222;
+            border: 1px solid #444;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 상단 헤더 (정보바 + 자원 표시) */
+        .top-header {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #444;
+        }
+
+        /* 상단 정보바 (1920x60) */
+        .top-info-bar {
+            height: 60px;
+            background-color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 0.9em;
+        }
+        .top-info-bar .game-title { color: #ffc107; font-weight: bold; }
+        .top-info-bar .system-buttons span { margin-left: 15px; cursor: pointer; }
+
+        /* 상단 자원 표시 */
+        .top-resource-display {
+            height: 50px; /* 자원 표시 영역 높이 */
+            background-color: #2a2a2a;
+            display: flex;
+            justify-content: flex-end; /* 우측 정렬 */
+            align-items: center;
+            padding: 0 20px;
+            font-size: 0.85em;
+        }
+        .resource-group { display: flex; gap: 20px; } /* 자원 아이템 간 간격 */
+        .resource-item { text-align: center; }
+        .resource-item span { display: block; }
+        .resource-item .icon { font-size: 1.2em; margin-bottom: 3px; }
+
+        /* 상단 자원 및 상태 표시 (이전) - 이제 사용되지 않음 */
+        /* .top-resource-status { ... } */
+
+        /* 우측 하단 시간 및 알림 */
+        .bottom-right-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 0.8em;
+            color: #eee;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 5px;
+            z-index: 100; /* 다른 요소 위에 표시 */
+        }
+        .bottom-right-info .time-info {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #ffc107;
+        }
+        .bottom-right-info .notification-area {
+            text-align: right;
+            color: #aaa;
+        }
+        .bottom-right-info .notification-area .all-notifications {
+            color: #ffc107;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        /* 메인 콘텐츠 영역 (메인 뷰 + 좌우 패널) */
+        .main-content-area {
+            flex-grow: 1;
+            display: flex;
+        }
+
+        /* 좌측 정보 패널 (250px, 이제 메인 메뉴 포함) */
+        .left-info-panel {
+            width: 250px; /* 너비 증가 */
+            background-color: #2d2d2d;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .left-panel-content {
+            padding: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-title {
+            color: #ffc107;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ffc107;
+        }
+        .panel-subtitle {
+            color: #eee;
+            font-size: 1em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .panel-section {
+            margin-bottom: 15px;
+        }
+        .survivor-list .survivor-item,
+        .facility-list .facility-item,
+        .construction-item,
+        .construction-progress-item {
+            background-color: #3a3a3a;
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 3px; /* 더 날카로운 모서리 */
+            border-left: 3px solid transparent; /* FM 스타일 강조선 */
+        }
+        .survivor-item:hover, .facility-item:hover, .construction-item:hover {
+            border-left-color: #ffc107;
+            cursor: pointer;
+        }
+
+        /* 생존자 목록 스타일 */
+        .survivor-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px; /* 항목 간 간격 줄임 */
+            margin-bottom: 20px; /* 거점 시설과의 간격 */
+        }
+        .survivor-list .survivor-item {
+            margin-bottom: 0; /* 기본 마진 제거 */
+            border-bottom: 1px solid #444; /* 구분선 */
+            padding-bottom: 5px; /* 구분선 위 여백 */
+            padding-top: 5px; /* 구분선 아래 여백 */
+        }
+        .survivor-list .survivor-item:last-child {
+            border-bottom: none; /* 마지막 항목은 구분선 없음 */
+        }
+
+        /* 메인 네비게이션 버튼 (좌측 패널 하단) */
+        .main-navigation-buttons {
+            border-top: 1px solid #444;
+            padding: 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .menu-button {
+            background-color: #3a3a3a;
+            padding: 10px 15px;
+            border-radius: 0; /* 모서리 없음 */
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.2s, color 0.2s;
+            text-align: left;
+            border: none;
+            color: #eee;
+        }
+        .menu-button:hover { background-color: #555; }
+        .menu-button.active { background-color: #ffc107; color: #333; font-weight: bold; }
+
+        /* 메인 게임 뷰 */
+        .main-game-view {
+            flex-grow: 1;
+            background-color: #111;
+            display: flex;
+            flex-direction: column; /* 세로 정렬 */
+            justify-content: space-between; /* 상단과 하단에 배치 */
+            align-items: center;
+            font-size: 2em;
+            color: #555;
+            position: relative;
+            overflow: hidden;
+            padding-bottom: 10px; /* 활동 로그를 위한 하단 여백 */
+        }
+        .main-game-view::before {
+            content: "메인 게임 뷰 (탑뷰 폐교 거점)";
+            position: relative; /* absolute 대신 relative로 변경 */
+            top: auto; /* 기존 top 속성 제거 */
+            left: auto; /* 기존 left 속성 제거 */
+            transform: none; /* 기존 transform 속성 제거 */
+            margin-top: auto; /* 상단으로 밀어 올림 */
+        }
+
+        /* 중앙 하단 활동 로그 */
+        .main-game-view .activity-log-bottom {
+            width: 80%; /* 너비 조정 */
+            max-height: 150px; /* 최대 높이 설정 */
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.5); /* 반투명 배경 */
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.75em;
+            color: #aaa;
+            margin-top: auto; /* 하단으로 밀어 내림 */
+        }
+        .main-game-view .activity-log-bottom .log-item {
+            margin-bottom: 3px;
+        }
+
+        /* 우측 정보 패널 (200px) */
+        .right-info-panel {
+            width: 200px;
+            background-color: #2d2d2d;
+            border-left: 1px solid #444;
+            padding: 15px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .minimap {
+            background-color: #1a1a1a;
+            height: 180px;
+            border: 1px solid #555;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9em;
+            color: #888;
+        }
+        .activity-log .log-item {
+            font-size: 0.75em;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        .log-item.success { color: #28a745; }
+        .log-item.warning { color: #ffc100; }
+        .log-item.danger { color: #dc3545; }
+
+        /* 하단 제어 패널 (100px, 선택된 대상 정보만) */
+        .bottom-control-panel {
+            height: 100px; /* 높이 축소 */
+            background-color: #333;
+            border-top: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+        .selected-info-panel-right {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            min-height: 80px; /* 최소 높이 설정 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .selected-info-panel-right .placeholder {
+            width: 100%;
+            height: 100%;
+            border: 1px dashed #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #888;
+        }
+
+        /* 건설 모드 관련 스타일 */
+        .construction-menu-categories {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .construction-menu-categories .category-button {
+            background-color: #555;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .construction-menu-categories .category-button:hover { background-color: #777; }
+        .construction-menu-categories .category-button.active { background-color: #ffc107; color: #333; }
+
+        .construction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .construction-item .cost { font-size: 0.75em; color: #aaa; }
+
+        .construction-progress-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .construction-progress-item .progress-bar {
+            background-color: #555;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .construction-progress-item .progress-fill {
+            background-color: #28a745;
+            height: 100%;
+            width: 75%; /* 예시 */
+            border-radius: 4px;
+        }
+        .construction-progress-item .progress-text {
+            font-size: 0.7em;
+            color: #aaa;
+        }
+
+        .mode-exit-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+            margin-top: 15px;
+            width: 100%;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .mode-exit-button:hover { background-color: #c82333; }
+
+        /* 반응형 디자인 (예시: 1366x768 해상도) */
+        @media (max-width: 1366px) {
+            .game-container {
+                width: 100%;
+                height: 768px;
+                max-width: 1366px;
+            }
+            .left-info-panel, .right-info-panel {
+                width: 200px; /* 반응형에서 너비 조정 */
+            }
+            .left-info-panel .left-panel-content {
+                padding: 10px;
+            }
+            .main-navigation-buttons .menu-button {
+                padding: 8px 10px;
+                font-size: 0.8em;
+            }
+            .bottom-control-panel {
+                height: 25px; /* 더 작게 */
+                padding: 0 5px;
+                font-size: 0.7em;
+            }
+            .selected-info-panel-right {
+                min-height: 60px; /* 반응형에서 최소 높이 조정 */
+                padding: 5px;
+                font-size: 0.8em;
+            }
+            .main-game-view .activity-log-bottom {
+                max-height: 100px; /* 반응형에서 최대 높이 조정 */
+                font-size: 0.7em;
+                padding: 5px;
+            }
+            .top-info-bar {
+                padding: 0 10px;
+                font-size: 0.8em;
+            }
+            .top-resource-display {
+                height: 40px; /* 반응형에서 높이 조정 */
+                padding: 0 10px;
+                font-size: 0.75em;
+            }
+            .resource-group { gap: 10px; }
+            .resource-item .icon { font-size: 1em; }
+            .bottom-right-info {
+                font-size: 0.7em;
+                padding: 5px 8px;
+                bottom: 5px;
+                right: 5px;
+            }
+            .bottom-right-info .notification-area {
+                font-size: 0.7em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="top-header">
+            <!-- 상단 정보바 -->
+            <div class="top-info-bar">
+                <div class="game-title">🎮 폐교 생존 게임</div>
+                <div class="system-buttons">
+                    <span>⏸️</span>
+                    <span>⚙️</span>
+                    <span>💾</span>
+                    <span>❌</span>
+                </div>
+            </div>
+            <!-- 상단 자원 표시 -->
+            <div class="top-resource-display">
+                <div class="resource-group">
+                    <div class="resource-item"><span class="icon">🍞</span><span>45/50</span><span>식량</span></div>
+                    <div class="resource-item"><span class="icon">💧</span><span>78/100</span><span>물</span></div>
+                    <div class="resource-item"><span class="icon">⛽</span><span>12/30</span><span>연료</span></div>
+                    <div class="resource-item"><span class="icon">🔧</span><span>23/100</span><span>스크랩</span></div>
+                    <div class="resource-item"><span class="icon">🏥</span><span>8</span><span>의약품</span></div>
+                    <div class="resource-item"><span class="icon">📦</span><span>15/20</span><span>전자부품</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <div class="main-content-area">
+            <!-- 좌측 정보 패널 -->
+            <div class="left-info-panel">
+                <div id="default-left-panel-content" class="left-panel-content">
+                    <div class="panel-title">🏠 거점 현황</div>
+                    <div class="panel-section">
+                        <div class="panel-subtitle">👥 생존자 관리</div>
+                        <div class="survivor-list">
+                            <div class="survivor-item">👤 김민수 🎖️ | 리더 | ❤️80% 😴30%</div>
+                            <div class="survivor-item">👤 박지영 ⚔️ | 전투원 | ❤️95% 😴60%</div>
+                            <div class="survivor-item">👤 이동혁 ⚔️ | 전투원 | ❤️100% 😴25%</div>
+                            <div class="survivor-item">👤 최수진 🏃 | 정찰 | ❤️75% 😴80%</div>
+                            <div class="survivor-item">👤 정태민 📦 | 운반 | ❤️90% 😴70%</div>
+                        </div>
+                    </div>
+                    <div class="panel-section" style="margin-top: 20px;">
+                        <div class="panel-subtitle">🏗️ 거점 시설</div>
+                        <div class="facility-list">
+                            <div class="facility-item">🏫 학교 건물</div>
+                            <div class="facility-item">🗼 감시탑 ⚡ (작동 중)</div>
+                            <div class="facility-item">📦 저장고 (75% 찬 상태)</div>
+                            <div class="facility-item">⚡ 전력: 4/5 단위 사용 중</div>
+                            <div class="facility-item">🔧 건설 중: 휴게소 (75%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="construction-left-panel-content" class="left-panel-content" style="display: none;">
+                    <div class="panel-title">🔨 건설 메뉴</div>
+                    <div class="construction-menu-categories">
+                        <div class="category-button active">방어시설</div>
+                        <div class="category-button">생산시설</div>
+                        <div class="category-button">편의시설</div>
+                    </div>
+                    <div class="construction-items">
+                        <div class="construction-item">
+                            <span>🛡️ 바리케이드</span>
+                            <span class="cost">🔧10 💰5</span>
+                        </div>
+                        <div class="construction-item">
+                            <span>🗼 감시탑</span>
+                            <span class="cost">🔧5 ⚡1 💰2</span>
+                        </div>
+                        <div class="construction-item">
+                            <span>💣 함정</span>
+                            <span class="cost">🔧3 💥2</span>
+                        </div>
+                    </div>
+                    <div class="panel-title" style="margin-top: 20px;">🚧 건설 진행 상황</div>
+                    <div class="construction-progress-list">
+                        <div class="construction-progress-item">
+                            <span>🗼 감시탑 건설중...</span>
+                            <div class="progress-bar"><div class="progress-fill" style="width: 75%;"></div></div>
+                            <span class="progress-text">75% (2시간 남음)</span>
+                        </div>
+                        <div class="construction-progress-item">
+                            <span>🔨 휴게소 건설중...</span>
+                            <div class="progress-bar"><div class="progress-fill" style="width: 30%;"></div></div>
+                            <span class="progress-text">30% (5시간 남음)</span>
+                        </div>
+                    </div>
+                    <button id="exit-construction-mode" class="mode-exit-button">← 모드 종료</button>
+                </div>
+
+                <div class="main-navigation-buttons">
+                    <div class="menu-button" id="btn-construction">🏗️ 건설 (B)</div>
+                    <div class="menu-button">👥 인력 (N)</div>
+                    <div class="menu-button">🗺️ 탐사 (M)</div>
+                    <div class="menu-button">🔬 연구 (R)</div>
+                    <div class="menu-button">⚡ 소환 (T)</div>
+                    <div class="menu-button">📊 통계 (I)</div>
+                </div>
+            </div>
+
+            <!-- 메인 게임 뷰 -->
+            <div class="main-game-view">
+                <!-- 게임 화면 내용이 여기에 표시됩니다. -->
+                <div class="activity-log-bottom">
+                    <div class="log-item success">14:25 바리케이드 건설 완료</div>
+                    <div class="log-item">14:20 김민수 체력 회복</div>
+                    <div class="log-item">14:15 탐사팀 상인동 도착</div>
+                    <div class="log-item warning">14:10 전력 부족 경고 해제</div>
+                    <div class="log-item danger">13:50 의료용품 부족 경고</div>
+                </div>
+            </div>
+
+            <!-- 우측 정보 패널 -->
+            <div class="right-info-panel">
+                <div class="panel-title">🗺️ 미니맵</div>
+                <div class="minimap">미니맵 영역</div>
+                <div class="panel-title" style="margin-top: 20px;">🎯 선택된 대상 정보</div>
+                <div class="selected-info-panel-right">
+                    <div class="placeholder">
+                        선택된 대상 정보 (생존자, 시설 등)가 여기에 표시됩니다.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 제어 패널 (이제 비어있거나 다른 용도로 사용) -->
+        <div class="bottom-control-panel" style="height: 30px; padding: 0 20px; font-size: 0.8em; justify-content: center; align-items: center; color: #888;">
+            게임 시간 제어 및 기타 하단 정보
+        </div>
+
+        <!-- 우측 하단 시간 및 알림 -->
+        <div class="bottom-right-info">
+            <div class="time-info">📅Day 3  🕐14:30  ⚡Wave 5  👥12/15명</div>
+            <div class="notification-area">
+                🔔 최근 알림: "바리케이드 건설 완료" <span class="all-notifications">[모든 알림] ▼</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnConstruction = document.getElementById('btn-construction');
+            const exitConstructionMode = document.getElementById('exit-construction-mode');
+            const defaultLeftPanel = document.getElementById('default-left-panel-content');
+            const constructionLeftPanel = document.getElementById('construction-left-panel-content');
+            const menuButtons = document.querySelectorAll('.main-navigation-buttons .menu-button');
+
+            function activateMode(modeId) {
+                // 모든 패널 숨기기
+                defaultLeftPanel.style.display = 'none';
+                constructionLeftPanel.style.display = 'none';
+
+                // 모든 메뉴 버튼 비활성화
+                menuButtons.forEach(btn => btn.classList.remove('active'));
+
+                // 선택된 모드 활성화
+                if (modeId === 'construction') {
+                    constructionLeftPanel.style.display = 'flex';
+                    btnConstruction.classList.add('active');
+                } else {
+                    defaultLeftPanel.style.display = 'flex';
+                    // 기본 모드 버튼 활성화 (예: 생존자 관리 버튼이 있다면)
+                    // 현재는 건설 버튼만 토글하므로, 다른 버튼 클릭 시 기본으로 돌아옴
+                }
+            }
+
+            // 건설 버튼 클릭 시
+            btnConstruction.addEventListener('click', function() {
+                activateMode('construction');
+            });
+
+            // 모드 종료 버튼 클릭 시 (건설 모드에서 기본으로 돌아옴)
+            exitConstructionMode.addEventListener('click', function() {
+                activateMode('default');
+                btnConstruction.classList.remove('active'); // 건설 버튼 비활성화
+            });
+
+            // 초기 로드 시 기본 모드 활성화
+            activateMode('default');
+        });
+    </script>
+</body>
+</html>
